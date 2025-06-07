@@ -53,29 +53,41 @@ requirements_keyauth.txt  # Python dependencies
 pip install -r requirements_keyauth.txt
 ```
 
-### 2. Configure KeyAuth
+### 2. Configure KeyAuth Secret
 
-Run the setup tool to configure your KeyAuth application:
+**Quick Setup (Recommended):**
+```bash
+python configure_keyauth_secret.py
+```
 
+**Full Setup Tool:**
 ```bash
 python keyauth_setup.py
 ```
 
+**Manual Configuration:**
+Edit the config file at: `%LOCALAPPDATA%\Harley's Studio\Star Citizen Kill Tracker\keyauth_config.json`
+
 Enter your KeyAuth application details:
-- **App Name**: Your KeyAuth application name
-- **Owner ID**: Your KeyAuth account ID
-- **App Secret**: Your KeyAuth application secret
-- **Seller Key**: Your KeyAuth seller key (for admin functions)
+- **App Name**: SCKillTrac
+- **Owner ID**: EWtg9qJWO2
+- **App Secret**: Your KeyAuth application secret (required!)
+- **Version**: 1.0
+- **API URL**: https://keyauth.win/api/1.3/
 
-### 3. Update Configuration
+### 3. Verify Configuration
 
-Edit the configuration in `keyauth_main.py`:
+Test your setup:
 
-```python
-# Replace with your actual KeyAuth secret
-def load_keyauth_secret(self):
-    return "YOUR_KEYAUTH_SECRET_HERE"
+```bash
+python test_keyauth_config.py
 ```
+
+This will verify:
+- Configuration files exist
+- Secret is properly loaded
+- KeyAuth API connectivity
+- All required modules are available
 
 ## 🚀 Usage
 
