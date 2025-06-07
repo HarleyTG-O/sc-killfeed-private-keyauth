@@ -7,6 +7,8 @@ import sys
 import os
 import logging
 import json
+import hashlib
+import platform
 from pathlib import Path
 from PySide6.QtWidgets import QApplication, QMessageBox
 from PySide6.QtCore import Qt
@@ -115,11 +117,39 @@ class KeyAuthSCKillTracker:
     def load_keyauth_secret(self):
         """Load KeyAuth secret from secure storage"""
         try:
-            # In production, this should be encrypted or retrieved securely
-            # For now, we'll use a placeholder
-            # TODO: Replace with your actual KeyAuth secret
-            return "YOUR_KEYAUTH_SECRET_HERE"
-            
+            # Try to load from encrypted file first
+            if KEYAUTH_SECRET_FILE.exists():
+                try:
+                    from cryptography.fernet import Fernet
+                    import base64
+
+                    # Generate key from machine-specific data
+                    machine_key = hashlib.sha256(f"{platform.node()}{platform.system()}".encode()).digest()
+                    key = base64.urlsafe_b64encode(machine_key)
+                    fernet = Fernet(key)
+
+                    with open(KEYAUTH_SECRET_FILE, 'rb') as f:
+                        encrypted_secret = f.read()
+
+                    secret = fernet.decrypt(encrypted_secret).decode()
+                    if secret and secret != "YOUR_KEYAUTH_SECRET_HERE":
+                        return secret
+
+                except Exception as e:
+                    self.logger.warning(f"Failed to decrypt secret file: {e}")
+
+            # Try to load from config file as fallback
+            if KEYAUTH_CONFIG_FILE.exists():
+                with open(KEYAUTH_CONFIG_FILE, 'r') as f:
+                    config = json.load(f)
+                    secret = config.get("app_secret", "")
+                    if secret and secret != "YOUR_KEYAUTH_SECRET_HERE":
+                        return secret
+
+            # If no valid secret found, prompt user to configure
+            self.logger.error("No valid KeyAuth secret found. Please run keyauth_setup.py to configure.")
+            return None
+
         except Exception as e:
             self.logger.error(f"Failed to load KeyAuth secret: {e}")
             return None

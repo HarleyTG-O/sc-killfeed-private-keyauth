@@ -390,9 +390,10 @@ class KeyAuthManager:
     def __init__(self, config: Dict[str, str]):
         self.api = KeyAuthAPI(
             name=config["name"],
-            ownerid=config["ownerid"], 
+            ownerid=config["ownerid"],
             secret=config["secret"],
-            version=config["version"]
+            version=config["version"],
+            api_url=config.get("api_url", "https://keyauth.win/api/1.3/")
         )
         self.current_user = None
         self.session_valid = False
@@ -467,9 +468,10 @@ class KeyAuthManager:
 # Configuration for SC Kill Tracker
 KEYAUTH_CONFIG = {
     "name": "SCKillTrac",
-    "ownerid": "EWtg9qJWO2", 
-    "secret": "",  # Add your secret here
-    "version": "1.0"
+    "ownerid": "EWtg9qJWO2",
+    "secret": "",  # Will be loaded from secure storage
+    "version": "1.0",
+    "api_url": "https://keyauth.win/api/1.3/"
 }
 
 # Global KeyAuth manager instance
@@ -478,12 +480,20 @@ keyauth_manager = None
 def initialize_keyauth(secret: str) -> bool:
     """Initialize KeyAuth for SC Kill Tracker"""
     global keyauth_manager
-    
+
+    # Validate secret
+    if not secret or secret == "YOUR_KEYAUTH_SECRET_HERE" or len(secret) < 10:
+        logging.error("Invalid or missing KeyAuth secret. Please configure using keyauth_setup.py")
+        return False
+
     config = KEYAUTH_CONFIG.copy()
     config["secret"] = secret
-    
+
     try:
         keyauth_manager = KeyAuthManager(config)
+        if not keyauth_manager.api.initialized:
+            logging.error("KeyAuth API failed to initialize. Check your secret and configuration.")
+            return False
         return True
     except Exception as e:
         logging.error(f"KeyAuth initialization failed: {e}")

@@ -198,7 +198,14 @@ class KeyAuthSetupTool:
             
             # Save encrypted secret if provided
             if self.app_secret.get():
-                self.save_encrypted_secret(self.app_secret.get())
+                try:
+                    self.save_encrypted_secret(self.app_secret.get())
+                except Exception as e:
+                    # Fallback: save in config file (less secure but functional)
+                    self.status_var.set(f"Encryption failed, saving as fallback: {e}")
+                    config["app_secret"] = self.app_secret.get()
+                    with open(self.config_file, 'w') as f:
+                        json.dump(config, f, indent=4)
             
             self.status_var.set("Configuration saved successfully")
             messagebox.showinfo("Success", "Configuration saved successfully!")
@@ -209,18 +216,19 @@ class KeyAuthSetupTool:
     def save_encrypted_secret(self, secret):
         """Save encrypted secret"""
         try:
-            # Generate encryption key from system info
-            key_material = f"{os.getenv('COMPUTERNAME', 'default')}{os.getenv('USERNAME', 'user')}"
-            key = base64.urlsafe_b64encode(hashlib.sha256(key_material.encode()).digest())
-            
+            # Generate key from machine-specific data (same method as main app)
+            import platform
+            machine_key = hashlib.sha256(f"{platform.node()}{platform.system()}".encode()).digest()
+            key = base64.urlsafe_b64encode(machine_key)
+
             # Encrypt secret
             fernet = Fernet(key)
             encrypted_secret = fernet.encrypt(secret.encode())
-            
+
             # Save to file
             with open(self.secret_file, 'wb') as f:
                 f.write(encrypted_secret)
-                
+
         except Exception as e:
             raise Exception(f"Failed to encrypt secret: {e}")
     
