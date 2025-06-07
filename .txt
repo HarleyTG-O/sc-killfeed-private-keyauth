@@ -1,0 +1,6 @@
+keyauthapp = api(
+    name = "SCKillTrac", # App name 
+    ownerid = "EWtg9qJWO2", # Account ID
+    version = "1.0", # Application version. Used for automatic downloads see video here https://www.youtube.com/watch?v=kW195PLCBKs
+    hash_to_check = getchecksum()
+)
