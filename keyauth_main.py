@@ -147,7 +147,7 @@ class KeyAuthSCKillTracker:
                         return secret
 
             # If no valid secret found, prompt user to configure
-            self.logger.error("No valid KeyAuth secret found. Please run keyauth_setup.py to configure.")
+            self.logger.error("No valid KeyAuth secret found. Please run setup_keyauth_secret.py to configure.")
             return None
 
         except Exception as e:
