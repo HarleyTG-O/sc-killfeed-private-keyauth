@@ -366,23 +366,13 @@ def load_user_language():
         return "EN-US"
 
 def initialize_keyauth_system():
-    """Initialize KeyAuth system with application secret"""
+    """Initialize KeyAuth system - API 1.3 doesn't require application secret"""
     if not KEYAUTH_AVAILABLE:
         return False
 
     try:
-        # TODO: Replace with your actual KeyAuth secret
-        # You can get this from your KeyAuth dashboard
-        keyauth_secret = "YOUR_KEYAUTH_SECRET_HERE"
-
-        # For production, load from secure storage or environment variable
-        # keyauth_secret = os.getenv("KEYAUTH_SECRET") or load_from_secure_storage()
-
-        if keyauth_secret == "YOUR_KEYAUTH_SECRET_HERE":
-            logging.warning("KeyAuth secret not configured. Please set your actual secret.")
-            return False
-
-        success = initialize_keyauth(keyauth_secret)
+        # API 1.3 doesn't use application secrets, just initialize directly
+        success = initialize_keyauth("")  # Empty secret for API 1.3
         if success:
             logging.info("KeyAuth system initialized successfully")
             return True
@@ -425,6 +415,44 @@ def authenticate_with_keyauth():
                     "Expires": user_info.get("expires", "Unknown"),
                     "Created": user_info.get("createdate", "Unknown")
                 }
+
+                # Create encrypted ID file for KeyAuth user (same as local users)
+                try:
+                    key = load_encryption_key()
+                    username = user_data["Username"]
+
+                    # Check if user already has an ID file
+                    user_file_path = get_user_file_path(username)
+                    if not os.path.exists(user_file_path):
+                        # Create new ID file for KeyAuth user
+                        create_id_file(username, key)
+                        logging.info(f"Created ID file for KeyAuth user: {username}")
+
+                    # Load the user data from the encrypted file to ensure consistency
+                    with open(user_file_path, "rb") as f:
+                        stored_user_data = decrypt_data(f.read(), key)
+
+                    # Update stored data with KeyAuth info while keeping the local format
+                    stored_user_data.update({
+                        "KeyAuth_User": True,
+                        "HWID": user_info.get("hwid", "Unknown"),
+                        "IP": user_info.get("ip", "Unknown"),
+                        "Subscription": user_info.get("subscription", "Unknown"),
+                        "Expires": user_info.get("expires", "Unknown"),
+                        "Created": user_info.get("createdate", "Unknown")
+                    })
+
+                    # Save updated data back to file
+                    encrypted = encrypt_data(stored_user_data, key)
+                    with open(user_file_path, "wb") as f:
+                        f.write(encrypted)
+
+                    # Use the stored data format for consistency
+                    user_data = stored_user_data
+
+                except Exception as e:
+                    logging.error(f"Failed to create/update ID file for KeyAuth user: {e}")
+                    # Continue with in-memory user data if file operations fail
 
                 # Log successful authentication
                 manager.api.log_activity("SC Kill Tracker authentication successful")
