@@ -1,8 +1,16 @@
 # -*- coding: utf-8 -*-
 
 # ===================================================================
-# SC KILL TRACKER - PERFORMANCE OPTIMIZED & ORGANIZED
+# SC KILL TRACKER - PERFORMANCE OPTIMIZED & ORGANIZED WITH KEYAUTH
 # ===================================================================
+# KeyAuth Integration Features:
+# - Secure authentication with username/password and license keys
+# - HWID tracking and hardware-based banning
+# - Real-time session validation and monitoring
+# - Admin panel for user management and blacklist control
+# - Advanced protection system with automatic user banning
+# - Discord webhook notifications for all events
+#
 # The following optimizations have been applied to improve performance:
 
 # === Python Standard Library - Core ===
@@ -88,6 +96,17 @@ from crash import get_system_info, handle_crash
 from protection import AdvancedProtection
 from starcitizenapi import __main__
 # from scktstartup_args import get_startup_flag, startup_flag
+
+# === KeyAuth Integration ===
+try:
+    from keyauth_integration import initialize_keyauth, get_keyauth_manager
+    from keyauth_dialogs import show_auth_dialog
+    KEYAUTH_AVAILABLE = True
+    print("KeyAuth integration loaded successfully")
+except ImportError as e:
+    KEYAUTH_AVAILABLE = False
+    print(f"KeyAuth integration not available: {e}")
+    print("Falling back to local authentication system")
 
 # Global variables for console capture
 app_console_widget = None
@@ -345,6 +364,119 @@ def load_user_language():
             return data.get("language", "EN-US")
     except Exception:
         return "EN-US"
+
+def initialize_keyauth_system():
+    """Initialize KeyAuth system with application secret"""
+    if not KEYAUTH_AVAILABLE:
+        return False
+
+    try:
+        # TODO: Replace with your actual KeyAuth secret
+        # You can get this from your KeyAuth dashboard
+        keyauth_secret = "YOUR_KEYAUTH_SECRET_HERE"
+
+        # For production, load from secure storage or environment variable
+        # keyauth_secret = os.getenv("KEYAUTH_SECRET") or load_from_secure_storage()
+
+        if keyauth_secret == "YOUR_KEYAUTH_SECRET_HERE":
+            logging.warning("KeyAuth secret not configured. Please set your actual secret.")
+            return False
+
+        success = initialize_keyauth(keyauth_secret)
+        if success:
+            logging.info("KeyAuth system initialized successfully")
+            return True
+        else:
+            logging.error("Failed to initialize KeyAuth system")
+            return False
+
+    except Exception as e:
+        logging.error(f"KeyAuth initialization error: {e}")
+        return False
+
+def authenticate_with_keyauth():
+    """Authenticate user with KeyAuth system"""
+    if not KEYAUTH_AVAILABLE:
+        return False, None
+
+    try:
+        # Check if user is blacklisted first
+        manager = get_keyauth_manager()
+        if manager and manager.api.check_blacklist():
+            QMessageBox.critical(None, "Access Denied",
+                               "Your hardware ID has been blacklisted. Access denied.")
+            return False, None
+
+        # Show KeyAuth authentication dialog
+        if show_auth_dialog():
+            manager = get_keyauth_manager()
+            if manager:
+                user_info = manager.get_user_info()
+
+                # Convert KeyAuth user data to SC Kill Tracker format
+                user_data = {
+                    "Username": user_info.get("username", "Unknown"),
+                    "SCKillTrac ID": f"{user_info.get('username', 'Unknown')}@SCKillTrac-KeyAuth",
+                    "UUID": user_info.get("hwid", str(uuid.uuid4())),
+                    "HWID": user_info.get("hwid", "Unknown"),
+                    "IP": user_info.get("ip", "Unknown"),
+                    "Subscription": user_info.get("subscription", "Unknown"),
+                    "KeyAuth_User": True,  # Flag to identify KeyAuth users
+                    "Expires": user_info.get("expires", "Unknown"),
+                    "Created": user_info.get("createdate", "Unknown")
+                }
+
+                # Log successful authentication
+                manager.api.log_activity("SC Kill Tracker authentication successful")
+
+                logging.info(f"KeyAuth authentication successful for user: {user_data['Username']}")
+                return True, user_data
+
+        return False, None
+
+    except Exception as e:
+        logging.error(f"KeyAuth authentication error: {e}")
+        QMessageBox.critical(None, "Authentication Error",
+                           f"KeyAuth authentication failed: {str(e)}")
+        return False, None
+
+def start_keyauth_session_monitoring():
+    """Start background session monitoring for KeyAuth users"""
+    if not KEYAUTH_AVAILABLE:
+        return
+
+    def monitor_session():
+        """Background thread to monitor KeyAuth session validity"""
+        while True:
+            try:
+                manager = get_keyauth_manager()
+                if manager and not manager.is_session_valid():
+                    logging.warning("KeyAuth session expired or invalid")
+
+                    # Show session expired message
+                    QMessageBox.critical(None, "Session Expired",
+                                       "Your KeyAuth session has expired. Please restart the application.")
+
+                    # Log session expiry
+                    try:
+                        manager.api.log_activity("Session expired - application terminating")
+                    except:
+                        pass
+
+                    # Terminate application
+                    os._exit(1)
+
+                # Check every 30 seconds
+                time.sleep(30)
+
+            except Exception as e:
+                logging.error(f"Session monitoring error: {e}")
+                time.sleep(60)  # Wait longer on error
+
+    # Start monitoring thread
+    monitor_thread = threading.Thread(target=monitor_session, daemon=True)
+    monitor_thread.start()
+    logging.info("KeyAuth session monitoring started")
 
 def fetch_remote_flags():
     flags = {
@@ -1700,43 +1832,57 @@ import time
 # Global variable to track last webhook send times (prevent spam)
 _last_webhook_times = {}
 
-def send_user_registration_webhook(user_data: dict, login=False):
+def send_user_registration_webhook(user_data: dict, login=False, keyauth=False):
     if not all(k in user_data for k in ("Username", "SCKillTrac ID", "UUID")):
         return
 
     # Prevent duplicate webhooks within 10 seconds
-    webhook_key = f"reg_{user_data['Username']}_{login}"
+    webhook_key = f"reg_{user_data['Username']}_{login}_{keyauth}"
     current_time = time.time()
-    
+
     if webhook_key in _last_webhook_times:
         if current_time - _last_webhook_times[webhook_key] < 10:
             logging.info(f"Skipping duplicate registration webhook for {user_data['Username']}")
             return
-    
+
     _last_webhook_times[webhook_key] = current_time
 
     try:
+        # Enhanced embed for KeyAuth users
+        auth_type = "🔐 KeyAuth" if keyauth else "🏠 Local"
+        title_prefix = "🆕 New" if not login else "🔑"
+
         embed = {
-            "title": "🆕 New SC Kill Tracker Registration" if not login else "🔑 SC Kill Tracker Login",
-            "color": 0x00bfff,
+            "title": f"{title_prefix} SC Kill Tracker {'Registration' if not login else 'Login'} ({auth_type})",
+            "color": 0x00ff00 if keyauth else 0x00bfff,
             "fields": [
                 {"name": "Username", "value": user_data["Username"], "inline": False},
                 {"name": "SCKillTrac ID", "value": user_data["SCKillTrac ID"], "inline": False},
-                {"name": "UUID", "value": user_data["UUID"], "inline": False},
+                {"name": "UUID/HWID", "value": user_data["UUID"], "inline": False},
+                {"name": "Authentication", "value": auth_type, "inline": True},
             ],
-            "footer": {"text": f"SC Kill Tracker [Version info : {VERSION}-{BUILD_TYPE}({DEPLOYMENT_SCOPE})]"}
+            "footer": {"text": f"SC Kill Tracker [Version: {VERSION}-{BUILD_TYPE}({DEPLOYMENT_SCOPE})]"}
         }
+
+        # Add KeyAuth-specific fields
+        if keyauth and user_data.get("KeyAuth_User"):
+            if user_data.get("IP"):
+                embed["fields"].append({"name": "IP Address", "value": user_data["IP"], "inline": True})
+            if user_data.get("Subscription"):
+                embed["fields"].append({"name": "Subscription", "value": user_data["Subscription"], "inline": True})
+            if user_data.get("Expires"):
+                embed["fields"].append({"name": "Expires", "value": user_data["Expires"], "inline": True})
 
         payload = {
             "embeds": [embed],
-            "username": "SC Kill Tracker Registration/Login System",
+            "username": "SC Kill Tracker KeyAuth System" if keyauth else "SC Kill Tracker Registration/Login System",
             "avatar_url": "https://github.com/HarleyTG-O/sc-killfeed/blob/main/logo.png?raw=true",
-            "content": f"{'User Registered' if not login else 'User Logged In'}: {user_data['Username']}"
+            "content": f"{'User Registered' if not login else 'User Logged In'} via {auth_type}: **{user_data['Username']}**"
         }
 
         response = requests.post(UserLoginWebhook_URL, json=payload, timeout=5)
         response.raise_for_status()
-        logging.info(f"{'Registration' if not login else 'Login'} webhook sent for {user_data['Username']}")
+        logging.info(f"{'Registration' if not login else 'Login'} webhook sent for {user_data['Username']} (KeyAuth: {keyauth})")
     except requests.RequestException as e:
         logging.error(f"Registration/Login webhook failed: {e}")
 
@@ -7015,21 +7161,42 @@ if __name__ == "__main__":
                 globals()["user_data"] = user_data
                 override_ui_for_guest_mode()
             else:
-                if not user_registered():
-                    registration_dialog = RegistrationDialog()  # Qt dialog
-                    if registration_dialog.exec() != QDialog.Accepted:
+                # Try KeyAuth authentication first
+                keyauth_initialized = False
+                if KEYAUTH_AVAILABLE:
+                    keyauth_initialized = initialize_keyauth_system()
+
+                if keyauth_initialized:
+                    # Use KeyAuth authentication
+                    auth_success, user_data = authenticate_with_keyauth()
+                    if not auth_success:
                         qt_app.quit()
                         sys.exit(0)
 
-                    key = load_encryption_key()
-                    user_data = load_first_user_data(key)
+                    # Send KeyAuth user registration/login webhook
                     if user_data:
-                        send_user_registration_webhook(user_data)
+                        send_user_registration_webhook(user_data, login=True, keyauth=True)
+
+                    # Start KeyAuth session monitoring
+                    start_keyauth_session_monitoring()
                 else:
-                    key = load_encryption_key()
-                    user_data = load_first_user_data(key)
-                    if user_data:
-                        send_user_registration_webhook(user_data, login=True)
+                    # Fallback to local authentication system
+                    logging.info("Using local authentication system")
+                    if not user_registered():
+                        registration_dialog = RegistrationDialog()  # Qt dialog
+                        if registration_dialog.exec() != QDialog.Accepted:
+                            qt_app.quit()
+                            sys.exit(0)
+
+                        key = load_encryption_key()
+                        user_data = load_first_user_data(key)
+                        if user_data:
+                            send_user_registration_webhook(user_data)
+                    else:
+                        key = load_encryption_key()
+                        user_data = load_first_user_data(key)
+                        if user_data:
+                            send_user_registration_webhook(user_data, login=True)
 
         if not is_user_admin():
             if not run_as_admin(extra_args=["--elevated"]):
