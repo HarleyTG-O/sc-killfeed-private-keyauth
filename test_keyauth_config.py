@@ -85,7 +85,7 @@ def test_keyauth_api():
     try:
         # Check if KeyAuth library is available
         try:
-            from keyauth import api
+            from keyauth import Keyauth
             print("  ✓ KeyAuth library is available")
         except ImportError:
             print("  ❌ KeyAuth library not found. Install with: pip install keyauth")
