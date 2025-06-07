@@ -1,7 +1,7 @@
 # KeyAuth Library Setup Guide
 
-## Great News! 🎉
-The KeyAuth integration now uses the **official KeyAuth Python library** - no application secret required!
+## KeyAuth Integration 🔐
+The KeyAuth integration uses the **official KeyAuth Python library** with your application secret.
 
 ## Quick Setup
 
@@ -17,13 +17,13 @@ python install_keyauth.py
 pip install keyauth
 ```
 
-### Step 2: Configure (Optional)
+### Step 2: Configure Your Secret (Required)
 
 ```bash
 python configure_keyauth_secret.py
 ```
 
-This creates a basic configuration file (no secrets needed!)
+Enter your KeyAuth application secret when prompted.
 
 ### Step 3: Test Setup
 
@@ -33,18 +33,19 @@ python test_keyauth_config.py
 
 ## How It Works
 
-The new integration uses the official KeyAuth library with these settings:
+The integration uses the official KeyAuth library with these settings:
 
 ```python
-keyauthapp = api(
-    name = "SCKillTrac",        # App name
-    ownerid = "EWtg9qJWO2",     # Account ID
-    version = "1.0",            # Application version
-    hash_to_check = getchecksum() # File hash (automatic)
+keyauthapp = Keyauth(
+    name="SCKillTrac",          # App name
+    owner_id="EWtg9qJWO2",      # Account ID
+    secret="YOUR_APP_SECRET",   # Application secret (required)
+    version="1.0",              # Application version
+    file_hash=getchecksum()     # File hash (automatic)
 )
 ```
 
-**No application secret needed!** The library handles authentication automatically.
+**Application secret is required** for proper authentication and initialization.
 
 ## User Authentication
 

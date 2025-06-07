@@ -366,13 +366,21 @@ def load_user_language():
         return "EN-US"
 
 def initialize_keyauth_system():
-    """Initialize KeyAuth system - API 1.3 doesn't require application secret"""
+    """Initialize KeyAuth system with application secret"""
     if not KEYAUTH_AVAILABLE:
         return False
 
     try:
-        # API 1.3 doesn't use application secrets, just initialize directly
-        success = initialize_keyauth("")  # Empty secret for API 1.3
+        # Load the KeyAuth secret from secure storage
+        from keyauth_main import KeyAuthMainApp
+        app = KeyAuthMainApp()
+        keyauth_secret = app.load_keyauth_secret()
+
+        if not keyauth_secret:
+            logging.warning("KeyAuth secret not configured. Please run keyauth_setup.py to configure.")
+            return False
+
+        success = initialize_keyauth(keyauth_secret)
         if success:
             logging.info("KeyAuth system initialized successfully")
             return True

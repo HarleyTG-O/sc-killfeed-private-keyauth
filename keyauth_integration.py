@@ -50,11 +50,12 @@ def getchecksum():
 class KeyAuthWrapper:
     """Wrapper for the official KeyAuth Python library"""
 
-    def __init__(self):
+    def __init__(self, secret: str = None):
         self.keyauthapp = None
         self.initialized = False
         self.user_data = None
         self.logger = logging.getLogger("KeyAuth")
+        self.secret = secret
 
     def init(self) -> bool:
         """Initialize KeyAuth using the official library"""
@@ -62,14 +63,18 @@ class KeyAuthWrapper:
             self.logger.error("KeyAuth library not available")
             return False
 
+        # Check if we have a secret
+        if not self.secret:
+            self.logger.error("KeyAuth secret is required. Please configure your application secret.")
+            return False
+
         try:
             # Initialize using the official KeyAuth library format
-            # Note: The library constructor requires (name, owner_id, secret, version, file_hash)
-            # For API 1.3, we'll use an empty secret or placeholder
+            # The library constructor requires (name, owner_id, secret, version, file_hash)
             self.keyauthapp = Keyauth(
                 name="SCKillTrac",
                 owner_id="EWtg9qJWO2",
-                secret="",  # Empty secret for API 1.3
+                secret=self.secret,  # Application secret is required
                 version="1.0",
                 file_hash=getchecksum()
             )
@@ -228,8 +233,8 @@ class KeyAuthWrapper:
 class KeyAuthManager:
     """High-level KeyAuth management for SC Kill Tracker using official library"""
 
-    def __init__(self):
-        self.api = KeyAuthWrapper()
+    def __init__(self, secret: str = None):
+        self.api = KeyAuthWrapper(secret)
         self.current_user = None
         self.session_valid = False
         self.logger = logging.getLogger("KeyAuthManager")
@@ -294,15 +299,20 @@ class KeyAuthManager:
 keyauth_manager = None
 
 def initialize_keyauth(secret: str = "") -> bool:
-    """Initialize KeyAuth for SC Kill Tracker - no secret needed for library"""
+    """Initialize KeyAuth for SC Kill Tracker - secret is required"""
     global keyauth_manager
 
     if not KEYAUTH_LIB_AVAILABLE:
         logging.error("KeyAuth library not available. Install with: pip install keyauth")
         return False
 
+    # Validate secret
+    if not secret or secret == "YOUR_KEYAUTH_SECRET_HERE":
+        logging.error("KeyAuth application secret is required. Please configure your secret.")
+        return False
+
     try:
-        keyauth_manager = KeyAuthManager()
+        keyauth_manager = KeyAuthManager(secret)
         if not keyauth_manager.api.initialized:
             logging.error("KeyAuth API failed to initialize.")
             return False

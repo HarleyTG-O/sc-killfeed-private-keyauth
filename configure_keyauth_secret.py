@@ -85,60 +85,73 @@ def validate_secret(secret):
 def main():
     """Main configuration function"""
     print("=" * 60)
-    print("KeyAuth Library Configuration")
-    print("SC Kill Tracker - Using Official KeyAuth Library")
+    print("KeyAuth Secret Configuration")
+    print("SC Kill Tracker - Official KeyAuth Library")
     print("=" * 60)
     print()
 
-    print("✅ Good news! The KeyAuth integration now uses the official library.")
-    print("✅ No application secret configuration is required!")
-    print()
-    print("The KeyAuth library handles authentication automatically using:")
-    print("  - App Name: SCKillTrac")
-    print("  - Owner ID: EWtg9qJWO2")
-    print("  - Version: 1.0")
-    print("  - File Hash: Automatically calculated")
+    print("The KeyAuth library requires your application secret for initialization.")
+    print("You can find this in your KeyAuth dashboard under application settings.")
     print()
 
     # Ensure config directory exists
     ensure_config_dir()
 
-    # Create basic config file
-    try:
-        config = {
-            "app_name": "SCKillTrac",
-            "owner_id": "EWtg9qJWO2",
-            "version": "1.0",
-            "api_url": "https://keyauth.win/api/1.3/",
-            "auto_ban_on_violation": True,
-            "session_check_interval": 30,
-            "library_mode": True
-        }
+    # Get secret from user
+    print("Please enter your KeyAuth application secret:")
+    print("(This can be found in your KeyAuth dashboard)")
+    print()
 
-        with open(CONFIG_FILE, 'w') as f:
-            json.dump(config, f, indent=4)
+    secret = input("KeyAuth Secret: ").strip()
 
-        print("✓ Configuration file created")
-
-    except Exception as e:
-        print(f"❌ Failed to create config: {e}")
+    # Validate secret
+    is_valid, message = validate_secret(secret)
+    if not is_valid:
+        print(f"❌ Error: {message}")
         return False
+
+    print(f"✓ {message}")
+    print()
+
+    # Try to save with encryption first
+    try:
+        if CRYPTO_AVAILABLE:
+            save_encrypted_secret(secret)
+            print("✓ Secret saved with encryption")
+        else:
+            save_config_secret(secret)
+            print("⚠️  Secret saved without encryption (cryptography package not available)")
+    except Exception as e:
+        print(f"❌ Encryption failed: {e}")
+        print("Falling back to config file storage...")
+        try:
+            save_config_secret(secret)
+            print("✓ Secret saved to config file (less secure)")
+        except Exception as e2:
+            print(f"❌ Failed to save secret: {e2}")
+            return False
 
     print()
     print("=" * 60)
     print("Configuration Complete!")
     print("=" * 60)
     print()
-    print("Your KeyAuth integration is ready to use!")
-    print("The application will authenticate users directly through KeyAuth.")
+    print("Your KeyAuth secret has been configured successfully.")
+    print("The application will now initialize with:")
+    print("  - App Name: SCKillTrac")
+    print("  - Owner ID: EWtg9qJWO2")
+    print("  - Version: 1.0")
+    print("  - Your Application Secret: [CONFIGURED]")
     print()
     print("Files created/updated:")
     print(f"  - Config: {CONFIG_FILE}")
+    if SECRET_FILE.exists():
+        print(f"  - Secret: {SECRET_FILE}")
     print()
     print("Next steps:")
-    print("  1. Install KeyAuth library: pip install keyauth")
-    print("  2. Run your SC Kill Tracker application")
-    print("  3. Users can login with their KeyAuth credentials")
+    print("  1. Run your SC Kill Tracker application")
+    print("  2. Users can login with their KeyAuth credentials")
+    print("  3. Test with: python test_keyauth_config.py")
 
     return True
 
