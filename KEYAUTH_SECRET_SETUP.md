@@ -1,120 +1,120 @@
-# KeyAuth Secret Configuration Guide
+# KeyAuth Library Setup Guide
 
-## Problem
-The KeyAuth integration for SC Kill Tracker is missing the application secret configuration, which is required for API version 1.3 authentication.
+## Great News! 🎉
+The KeyAuth integration now uses the **official KeyAuth Python library** - no application secret required!
 
-## Quick Fix
+## Quick Setup
 
-### Option 1: Use the Quick Configuration Script (Recommended)
+### Step 1: Install KeyAuth Library
 
-1. **Run the configuration script:**
-   ```bash
-   python configure_keyauth_secret.py
-   ```
+**Automatic Installation (Recommended):**
+```bash
+python install_keyauth.py
+```
 
-2. **Enter your KeyAuth secret when prompted**
-   - Get your secret from your KeyAuth dashboard
-   - The script will validate and securely store it
+**Manual Installation:**
+```bash
+pip install keyauth
+```
 
-3. **Done!** Your application is now configured.
+### Step 2: Configure (Optional)
 
-### Option 2: Use the Full Setup Tool
+```bash
+python configure_keyauth_secret.py
+```
 
-1. **Run the setup tool:**
-   ```bash
-   python keyauth_setup.py
-   ```
+This creates a basic configuration file (no secrets needed!)
 
-2. **Fill in all required fields:**
-   - App Name: `SCKillTrac`
-   - Owner ID: `EWtg9qJWO2`
-   - **Application Secret: [Your KeyAuth Secret]**
-   - Version: `1.0`
-   - API URL: `https://keyauth.win/api/1.3/`
+### Step 3: Test Setup
 
-3. **Click "Save Configuration"**
+```bash
+python test_keyauth_config.py
+```
 
-### Option 3: Manual Configuration
+## How It Works
 
-1. **Create/edit the config file:**
-   ```
-   %LOCALAPPDATA%\Harley's Studio\Star Citizen Kill Tracker\keyauth_config.json
-   ```
+The new integration uses the official KeyAuth library with these settings:
 
-2. **Add your secret to the config:**
-   ```json
-   {
-     "app_name": "SCKillTrac",
-     "owner_id": "EWtg9qJWO2",
-     "version": "1.0",
-     "api_url": "https://keyauth.win/api/1.3/",
-     "app_secret": "YOUR_ACTUAL_KEYAUTH_SECRET_HERE",
-     "auto_ban_on_violation": true,
-     "session_check_interval": 30
-   }
-   ```
+```python
+keyauthapp = api(
+    name = "SCKillTrac",        # App name
+    ownerid = "EWtg9qJWO2",     # Account ID
+    version = "1.0",            # Application version
+    hash_to_check = getchecksum() # File hash (automatic)
+)
+```
 
-## Where to Find Your KeyAuth Secret
+**No application secret needed!** The library handles authentication automatically.
 
-1. **Log into your KeyAuth dashboard**
-2. **Go to your application settings**
-3. **Copy the "Application Secret" value**
-4. **Use this value in the configuration**
+## User Authentication
 
-## API Version 1.3 Features
+Users can authenticate using:
+- **Username & Password** - Standard KeyAuth login
+- **License Key** - Direct license authentication
+- **Registration** - New user registration with license
 
-The integration is already configured for KeyAuth API version 1.3, which includes:
+## Integration with SC Kill Tracker
 
-- ✅ Enhanced security
-- ✅ Improved session management
-- ✅ Better error handling
-- ✅ HWID blacklisting
-- ✅ Real-time session validation
-- ✅ Activity logging
+✅ **User ID Files**: KeyAuth users get encrypted ID files (same as local users)
+✅ **Session Management**: Automatic session validation and monitoring
+✅ **HWID Tracking**: Hardware-based user identification
+✅ **Activity Logging**: All actions logged to KeyAuth dashboard
+
+## Library Features
+
+The official KeyAuth library provides:
+
+- ✅ **No Secrets Required** - Library handles authentication automatically
+- ✅ **Automatic HWID** - Hardware ID generation and tracking
+- ✅ **Session Management** - Built-in session validation
+- ✅ **Error Handling** - Comprehensive error messages
+- ✅ **Activity Logging** - All actions logged to dashboard
+- ✅ **Blacklist Support** - HWID blacklisting capabilities
 
 ## Verification
 
-After configuration, you can verify the setup by:
+After setup, verify everything works:
 
-1. **Running the main application:**
+1. **Test the configuration:**
    ```bash
-   python keyauth_main.py
+   python test_keyauth_config.py
    ```
 
-2. **Check the logs for:**
+2. **Run your application:**
+   ```bash
+   python SCKillTrac[Global].py
+   ```
+
+3. **Check for successful initialization:**
+   - "KeyAuth integration loaded successfully"
    - "KeyAuth initialized successfully"
-   - No "Invalid or missing KeyAuth secret" errors
 
 ## Troubleshooting
 
-### "Invalid or missing KeyAuth secret"
-- Ensure you've entered the correct secret from your KeyAuth dashboard
-- Run the configuration script again
-- Check that the secret is at least 10 characters long
+### "KeyAuth library not found"
+```bash
+pip install keyauth
+```
 
-### "KeyAuth API failed to initialize"
-- Verify your internet connection
-- Check that your KeyAuth application is active
-- Ensure the API URL is correct: `https://keyauth.win/api/1.3/`
+### "KeyAuth integration not available"
+- Check that `keyauth_integration.py` exists
+- Verify all imports are working
+- Run the test script for detailed diagnostics
 
-### "Cryptography package not available"
-- Install the cryptography package: `pip install cryptography`
-- Or use the fallback config file method
-
-## Security Notes
-
-- **Encrypted Storage**: Secrets are encrypted using machine-specific keys
-- **Fallback Storage**: If encryption fails, secrets are stored in config files
-- **File Permissions**: Ensure config directory has appropriate permissions
+### "KeyAuth initialization failed"
+- Check your internet connection
+- Verify the app name and owner ID are correct
+- Ensure your KeyAuth application is active
 
 ## Files Created
 
-After configuration, these files will be created:
+After setup, these files will be created:
 
 ```
 %LOCALAPPDATA%\Harley's Studio\Star Citizen Kill Tracker\
-├── keyauth_config.json          # Main configuration
-└── keyauth_secret.enc           # Encrypted secret (if encryption available)
+├── keyauth_config.json          # Basic configuration
+└── User\
+    └── [username]_id.enc        # Encrypted user ID files (for each KeyAuth user)
 ```
 
 ## Support
