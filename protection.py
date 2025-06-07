@@ -51,6 +51,14 @@ try:
     HAS_WINREG = True
 except ImportError:
     HAS_WINREG = False
+
+# KeyAuth integration
+try:
+    from keyauth_integration import get_keyauth_manager
+    HAS_KEYAUTH = True
+except ImportError:
+    HAS_KEYAUTH = False
+
 from datetime import datetime
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
@@ -957,7 +965,20 @@ class AdvancedProtection:
             print(f"Failed to send webhook: {str(e)}")
 
     def _handle_protection_violation(self, violation_type):
-        """Enhanced protection violation handling"""
+        """Enhanced protection violation handling with KeyAuth integration"""
+        # KeyAuth integration - ban user if authenticated
+        if HAS_KEYAUTH:
+            try:
+                manager = get_keyauth_manager()
+                if manager and manager.is_session_valid():
+                    manager.ban_current_user(f"Protection violation: {violation_type}")
+                    manager.api.log_activity(f"User banned for {violation_type} violation")
+                    self._send_webhook_message("KeyAuth Ban",
+                                             f"User banned for {violation_type} violation",
+                                             0xFF0000)
+            except Exception as e:
+                self._send_webhook_message("KeyAuth Error", f"Failed to ban user: {str(e)}", 0xFFA500)
+
         if violation_type == "debugger":
             self.debug_attempts += 1
 
