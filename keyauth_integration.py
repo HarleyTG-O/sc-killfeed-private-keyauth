@@ -50,11 +50,12 @@ def getchecksum():
 class KeyAuthWrapper:
     """Wrapper for the official KeyAuth Python library"""
 
-    def __init__(self):
+    def __init__(self, secret: str = ""):
         self.keyauthapp = None
         self.initialized = False
         self.user_data = None
         self.logger = logging.getLogger("KeyAuth")
+        self.secret = secret
 
     def init(self) -> bool:
         """Initialize KeyAuth using the official library"""
@@ -63,15 +64,20 @@ class KeyAuthWrapper:
             return False
 
         try:
+            # Check if we have a valid secret
+            if not self.secret or self.secret.strip() == "":
+                self.logger.error("KeyAuth secret is required but not provided")
+                return False
+
             # Initialize using the official KeyAuth library format
-            # Note: The library constructor requires (name, owner_id, secret, version, file_hash)
-            # For API 1.3, we'll use an empty secret or placeholder
+            # Based on the error message, the correct parameter order appears to be:
+            # Keyauth(name, ownerid, secret, version, hash_to_check)
             self.keyauthapp = Keyauth(
                 name="SCKillTrac",
-                owner_id="EWtg9qJWO2",
-                secret="",  # Empty secret for API 1.3
+                ownerid="EWtg9qJWO2",
+                secret=self.secret,
                 version="1.0",
-                file_hash=getchecksum()
+                hash_to_check=getchecksum()
             )
 
             self.initialized = True
@@ -160,34 +166,7 @@ class KeyAuthWrapper:
             self.logger.error(f"License login failed: {e}")
             return {"success": False, "message": str(e)}
     
-    def login(self, username: str, password: str, hwid: Optional[str] = None, code: Optional[str] = None) -> Dict[str, Any]:
-        """Login user with username and password"""
-        if not self._check_init():
-            return {"success": False, "message": "Not initialized"}
-            
-        if not hwid:
-            hwid = self._get_hwid()
-            
-        post_data = {
-            "type": "login",
-            "username": username,
-            "pass": password,
-            "hwid": hwid,
-            "sessionid": self.sessionid,
-            "name": self.name,
-            "ownerid": self.ownerid
-        }
-        
-        if code:
-            post_data["code"] = code
-            
-        response = self._do_request(post_data)
-        if response and response.get("success"):
-            self.user_data = response.get("info", {})
-            self.logger.info(f"User {username} logged in successfully")
-            
-        return response or {"success": False, "message": "Request failed"}
-    
+
     def check_blacklist(self) -> bool:
         """Check if current HWID is blacklisted"""
         if not self.initialized:
@@ -228,8 +207,8 @@ class KeyAuthWrapper:
 class KeyAuthManager:
     """High-level KeyAuth management for SC Kill Tracker using official library"""
 
-    def __init__(self):
-        self.api = KeyAuthWrapper()
+    def __init__(self, secret: str = ""):
+        self.api = KeyAuthWrapper(secret)
         self.current_user = None
         self.session_valid = False
         self.logger = logging.getLogger("KeyAuthManager")
@@ -294,15 +273,19 @@ class KeyAuthManager:
 keyauth_manager = None
 
 def initialize_keyauth(secret: str = "") -> bool:
-    """Initialize KeyAuth for SC Kill Tracker - no secret needed for library"""
+    """Initialize KeyAuth for SC Kill Tracker - secret is required"""
     global keyauth_manager
 
     if not KEYAUTH_LIB_AVAILABLE:
         logging.error("KeyAuth library not available. Install with: pip install keyauth")
         return False
 
+    if not secret or secret.strip() == "":
+        logging.error("KeyAuth secret is required for initialization")
+        return False
+
     try:
-        keyauth_manager = KeyAuthManager()
+        keyauth_manager = KeyAuthManager(secret)
         if not keyauth_manager.api.initialized:
             logging.error("KeyAuth API failed to initialize.")
             return False
