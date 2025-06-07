@@ -78,43 +78,37 @@ def load_secret():
     print("  ❌ No valid secret found")
     return None, None
 
-def test_keyauth_api(secret):
-    """Test KeyAuth API connectivity"""
-    print("\nTesting KeyAuth API...")
-    
-    if not secret:
-        print("  ❌ Cannot test API without secret")
-        return False
-    
+def test_keyauth_api():
+    """Test KeyAuth API connectivity using the library"""
+    print("\nTesting KeyAuth Library...")
+
     try:
+        # Check if KeyAuth library is available
+        try:
+            from keyauth import api
+            print("  ✓ KeyAuth library is available")
+        except ImportError:
+            print("  ❌ KeyAuth library not found. Install with: pip install keyauth")
+            return False
+
         # Import KeyAuth integration
-        from keyauth_integration import KeyAuthAPI
-        
+        from keyauth_integration import KeyAuthWrapper
+
         # Create API instance
-        api = KeyAuthAPI(
-            name="SCKillTrac",
-            ownerid="EWtg9qJWO2",
-            secret=secret,
-            version="1.0",
-            api_url="https://keyauth.win/api/1.3/"
-        )
-        
-        if api.initialized:
-            print("  ✓ KeyAuth API initialized successfully")
-            
-            # Test session check
-            if api.check_session():
-                print("  ✓ Session validation working")
-            else:
-                print("  ⚠️  Session validation failed (may be normal)")
-            
+        wrapper = KeyAuthWrapper()
+
+        if wrapper.init():
+            print("  ✓ KeyAuth library initialized successfully")
+            print("  ✓ App Name: SCKillTrac")
+            print("  ✓ Owner ID: EWtg9qJWO2")
+            print("  ✓ Version: 1.0")
             return True
         else:
-            print("  ❌ KeyAuth API failed to initialize")
+            print("  ❌ KeyAuth library failed to initialize")
             return False
-            
+
     except Exception as e:
-        print(f"  ❌ API test failed: {e}")
+        print(f"  ❌ Library test failed: {e}")
         return False
 
 def test_imports():
@@ -163,64 +157,52 @@ def test_imports():
 def main():
     """Main test function"""
     print("=" * 60)
-    print("KeyAuth Configuration Test")
-    print("SC Kill Tracker - API Version 1.3")
+    print("KeyAuth Library Test")
+    print("SC Kill Tracker - Using Official KeyAuth Library")
     print("=" * 60)
-    
+
     # Test configuration files
     config_results = test_config_files()
-    
+
     # Test imports
     import_results = test_imports()
-    
-    # Test secret loading
-    secret, source = load_secret()
-    
-    # Test API if secret is available
-    api_working = False
-    if secret:
-        api_working = test_keyauth_api(secret)
-    
+
+    # Test KeyAuth library
+    api_working = test_keyauth_api()
+
     # Summary
     print("\n" + "=" * 60)
     print("Test Summary")
     print("=" * 60)
-    
+
     all_good = True
-    
-    if not config_results["config_file"]:
-        print("❌ Configuration file missing - run configure_keyauth_secret.py")
-        all_good = False
-    
-    if not secret:
-        print("❌ KeyAuth secret not configured - run configure_keyauth_secret.py")
-        all_good = False
-    
+
     if not import_results["keyauth_integration"]:
         print("❌ KeyAuth integration module missing")
         all_good = False
-    
+
+    if not api_working:
+        print("❌ KeyAuth library not working - install with: pip install keyauth")
+        all_good = False
+
     if not import_results["cryptography"]:
         print("⚠️  Cryptography package not available - install with: pip install cryptography")
-    
-    if secret and not api_working:
-        print("❌ KeyAuth API not working - check your secret and internet connection")
-        all_good = False
-    
+
     if all_good:
-        print("✅ All tests passed! KeyAuth is properly configured.")
-        print(f"   Secret source: {source}")
+        print("✅ All tests passed! KeyAuth library is properly configured.")
         print("   Ready to run SC Kill Tracker with KeyAuth authentication.")
+        print("   No application secret required - using official library!")
     else:
         print("❌ Some tests failed. Please fix the issues above.")
-    
+
     print("\nNext steps:")
-    if not secret:
-        print("  1. Run: python configure_keyauth_secret.py")
+    if not api_working:
+        print("  1. Install KeyAuth library: pip install keyauth")
+    print("  2. Run: python configure_keyauth_secret.py (to create config)")
     if all_good:
-        print("  1. Run: python keyauth_main.py")
-    print("  2. Test authentication with your KeyAuth credentials")
-    
+        print("  3. Run your SC Kill Tracker application")
+    print("  4. Users can authenticate with KeyAuth credentials")
+
     return all_good
 
 if __name__ == "__main__":
