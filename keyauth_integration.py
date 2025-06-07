@@ -18,7 +18,7 @@ import threading
 
 # Import the KeyAuth library
 try:
-    from keyauth import api
+    from keyauth import Keyauth
     KEYAUTH_LIB_AVAILABLE = True
 except ImportError:
     KEYAUTH_LIB_AVAILABLE = False
@@ -63,12 +63,15 @@ class KeyAuthWrapper:
             return False
 
         try:
-            # Initialize using your exact format
-            self.keyauthapp = api(
-                name="SCKillTrac",  # App name
-                ownerid="EWtg9qJWO2",  # Account ID
-                version="1.0",  # Application version
-                hash_to_check=getchecksum()
+            # Initialize using the official KeyAuth library format
+            # Note: The library constructor requires (name, owner_id, secret, version, file_hash)
+            # For API 1.3, we'll use an empty secret or placeholder
+            self.keyauthapp = Keyauth(
+                name="SCKillTrac",
+                owner_id="EWtg9qJWO2",
+                secret="",  # Empty secret for API 1.3
+                version="1.0",
+                file_hash=getchecksum()
             )
 
             self.initialized = True
@@ -89,13 +92,13 @@ class KeyAuthWrapper:
 
             # Get user data from KeyAuth
             self.user_data = {
-                "username": self.keyauthapp.user_data.username,
-                "hwid": self.keyauthapp.user_data.hwid,
-                "ip": self.keyauthapp.user_data.ip,
-                "subscription": self.keyauthapp.user_data.subscription,
-                "expires": self.keyauthapp.user_data.expires,
-                "createdate": self.keyauthapp.user_data.createdate,
-                "lastlogin": self.keyauthapp.user_data.lastlogin
+                "username": self.keyauthapp.user.username,
+                "hwid": self.keyauthapp.user.hwid,
+                "ip": self.keyauthapp.user.ip,
+                "subscription": "default",  # KeyAuth library doesn't expose subscription directly
+                "expires": self.keyauthapp.user.expires,
+                "createdate": self.keyauthapp.user.creation_date,
+                "lastlogin": self.keyauthapp.user.last_login
             }
 
             self.logger.info(f"User {username} logged in successfully")
@@ -115,13 +118,13 @@ class KeyAuthWrapper:
 
             # Get user data from KeyAuth
             self.user_data = {
-                "username": self.keyauthapp.user_data.username,
-                "hwid": self.keyauthapp.user_data.hwid,
-                "ip": self.keyauthapp.user_data.ip,
-                "subscription": self.keyauthapp.user_data.subscription,
-                "expires": self.keyauthapp.user_data.expires,
-                "createdate": self.keyauthapp.user_data.createdate,
-                "lastlogin": self.keyauthapp.user_data.lastlogin
+                "username": self.keyauthapp.user.username,
+                "hwid": self.keyauthapp.user.hwid,
+                "ip": self.keyauthapp.user.ip,
+                "subscription": "default",
+                "expires": self.keyauthapp.user.expires,
+                "createdate": self.keyauthapp.user.creation_date,
+                "lastlogin": self.keyauthapp.user.last_login
             }
 
             self.logger.info(f"User {username} registered successfully")
@@ -141,13 +144,13 @@ class KeyAuthWrapper:
 
             # Get user data from KeyAuth
             self.user_data = {
-                "username": getattr(self.keyauthapp.user_data, 'username', 'License User'),
-                "hwid": self.keyauthapp.user_data.hwid,
-                "ip": self.keyauthapp.user_data.ip,
-                "subscription": self.keyauthapp.user_data.subscription,
-                "expires": self.keyauthapp.user_data.expires,
-                "createdate": getattr(self.keyauthapp.user_data, 'createdate', 'Unknown'),
-                "lastlogin": getattr(self.keyauthapp.user_data, 'lastlogin', 'Unknown')
+                "username": getattr(self.keyauthapp.user, 'username', 'License User'),
+                "hwid": self.keyauthapp.user.hwid,
+                "ip": self.keyauthapp.user.ip,
+                "subscription": "default",
+                "expires": self.keyauthapp.user.expires,
+                "createdate": getattr(self.keyauthapp.user, 'creation_date', 'Unknown'),
+                "lastlogin": getattr(self.keyauthapp.user, 'last_login', 'Unknown')
             }
 
             self.logger.info("License login successful")
@@ -191,9 +194,7 @@ class KeyAuthWrapper:
             return False
 
         try:
-            # KeyAuth library handles blacklist checking internally
-            # This is typically done during login/register
-            return False
+            return self.keyauthapp.check_blacklist()
         except Exception as e:
             self.logger.error(f"Blacklist check failed: {e}")
             return False
@@ -216,8 +217,7 @@ class KeyAuthWrapper:
             return False
 
         try:
-            # KeyAuth library maintains session automatically
-            return True
+            return self.keyauthapp.check()
         except Exception as e:
             self.logger.error(f"Session check failed: {e}")
             return False
